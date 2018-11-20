@@ -41,7 +41,7 @@ const currentProcId = parseInt(process.env.pm_id, 10);
 /**
  * Indicates the process is being ran in PM2's cluster mode
  */
-const isClusterMode = process.env.exec_mode === 'cluster_mode';
+export const isClusterMode = process.env.exec_mode === 'cluster_mode';
 
 /**
  * Returns a list of PM2 processes when running in clustered mode
@@ -64,7 +64,6 @@ async function broadcastToAll(packet: ProcessPacket): Promise<number> {
         return list.length;
     });
 }
-
 
 /**
  * Sends a message to all processes in the cluster and resolves once all processes repsonsed or after a timeout
@@ -135,7 +134,7 @@ if (isClusterMode) {
         if (packet && packet.topic === 'metrics-get' && !packet.isReply) {
             sendProcReply(packet, client.register.getMetricsAsJSON());
         }
-    }
+    };
     process.removeListener('message', handleProcessMessage);
     process.on('message', handleProcessMessage);
 }
