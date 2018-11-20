@@ -1,109 +1,169 @@
-import { dialog, BrowserWindow, MessageBoxOptions } from 'electron';
+import * as pm2 from 'pm2';
+import * as client from 'prom-client';
 
-export interface MessageBoxButton {
+interface ProcessPacket {
     /**
-     * Button display label
+     * The message topic
      */
-    label: string;
-
-    /**
-     * Optional function to attach to the button
-     */
-    action?: () => void;
+    topic: string;
 
     /**
-     * True if the button should be selected by default when the message box opens
-     */
-    isDefault?: boolean;
+    * The PM2 proc id the message is currently on (seems weird, but PM2 is changing this id)
+    */
+    id: number;
 
     /**
-     * If true, the button will be selected when the message box is canceled via the Esc key
+     * The data payload of this packet
      */
-    isCancel?: boolean;
+    data: any;
 
     /**
-     * Optional data to attach to the button
+     * Is this message a reply
      */
-    data?: any;
+    isReply?: boolean;
+
+    /**
+     * PM2 id which is expecting the reply
+     */
+    replyTo?: number;
+
+    /**
+     * The originating PM2 proc id
+     */
+    originalProcId: number;
 }
 
 /**
- * Better message box options
+ * This process's PM proc id
  */
-export interface BetterMessageBoxOptions extends MessageBoxOptions {
-
-    /**
-     * Buttons to add to the message box
-     */
-    betterButtons: MessageBoxButton[];
-}
+const currentProcId = parseInt(process.env.pm_id, 10);
 
 /**
-*  Shows a message box asynchronously and invokes the callback function with an instance of the button that was selected
-* 
-* @param window The window to attach to as as modal dialog
-* @param options The options
-* @param callback Callback when button is selected 
-*/
-export function showBetterMessageBox(window: BrowserWindow, options: BetterMessageBoxOptions,
-    callback: (response: MessageBoxButton, checkboxChecked: boolean) => void): void;
-
-/**
- * Shows a message box asynchronously and invokes the callback function with an instance of the button that was selected
- * 
- * @param options The options
- * @param callback Callback when button is selected
+ * Indicates the process is being ran in PM2's cluster mode
  */
-export function showBetterMessageBox(options: BetterMessageBoxOptions,
-    callback: (response: MessageBoxButton, checkboxChecked: boolean) => void): void;
+const isClusterMode = process.env.exec_mode === 'cluster_mode';
 
 /**
-* Shows a message box synchronously and returns an instance of the button that was selected
-* 
-* @param window The window to attach to as as modal dialog
-* @param options The options
-*/
-export function showBetterMessageBox(window: BrowserWindow, options: BetterMessageBoxOptions): MessageBoxButton;
-
-/**
-* Shows a message box synchronously and returns an instance of the button that was selected
-* 
-* @param options The options
-*/
-export function showBetterMessageBox(options: BetterMessageBoxOptions): MessageBoxButton;
-
-export function showBetterMessageBox(...args: any[]): MessageBoxButton | void {
-
-    let [window, options, callback] = args;
-
-    if (window != null && window.constructor !== BrowserWindow) {
-        [window, options, callback] = [null, window, options];
-    }
-
-    return internalShowBetterMessageBox(window, options, callback);
+ * Returns a list of PM2 processes when running in clustered mode
+ */
+function getProcList(): Promise<Array<pm2.ProcessDescription>> {
+    return new Promise((resolve, reject) => {
+        pm2.list((err, list) => {
+            err ? reject(err) : resolve(list);
+        });
+    });
 }
 
-function internalShowBetterMessageBox(window: BrowserWindow, options: BetterMessageBoxOptions,
-    callback?: (response: MessageBoxButton, checkboxChecked: boolean) => void): MessageBoxButton | void {
+/**
+ * Broadcasts message to all processes in the cluster, resolving with the number of processes sent to
+ * @param packet The packet to send
+ */
+async function broadcastToAll(packet: ProcessPacket): Promise<number> {
+    return getProcList().then(list => {
+        list.forEach(proc => pm2.sendDataToProcessId(proc.pm_id, packet, err => true));
+        return list.length;
+    });
+}
 
-    if (!(options.betterButtons && options.betterButtons.length)) {
-        throw new Error('Use the betterButtons property with this function');
-    }
 
-    options.buttons = [];
+/**
+ * Sends a message to all processes in the cluster and resolves once all processes repsonsed or after a timeout
+ * @param topic The name of the topic to broadcast
+ * @param data The optional data payload
+ * @param timeoutInMilliseconds The length of time to wait for responses before rejecting the promise
+ */
+function awaitAllProcMessagesReplies(topic: string, data: any = {}, timeoutInMilliseconds: number): Promise<Array<ProcessPacket>> {
 
-    options.betterButtons.forEach((b, i) => {
-        options.buttons.push(b.label);
-        options.cancelId = b.isCancel ? i : options.cancelId;
-        options.defaultId = b.isDefault ? i : options.defaultId;
+    return new Promise(async (resolve, reject) => {
+        const responses = [];
+
+        const procLength = await broadcastToAll({
+            id: currentProcId,
+            replyTo: currentProcId,
+            originalProcId: currentProcId,
+            topic,
+            data,
+            isReply: false,
+        });
+
+        const timeoutHandle = setTimeout(() => reject('timeout'), timeoutInMilliseconds);
+
+        const handler = (response: ProcessPacket) => {
+
+            if (!response.isReply || response.topic !== topic) {
+                return;
+            }
+
+            responses.push(response);
+
+            if (responses.length === procLength) {
+                process.removeListener('message', handler);
+                clearTimeout(timeoutHandle);
+                resolve(responses);
+            }
+        };
+
+        process.on('message', handler);
+
     });
 
-    if (callback) {
-        dialog.showMessageBox(window, options, (res, check) => {
-            callback(options.betterButtons[res], check);
-        });
-    } else {
-        const result = dialog.showMessageBox(window, options);
-        return options.betterButtons[result];
+}
+
+/**
+ * Sends a reply to the processes which originated a broadcast
+ * @param originalPacket The original packet received
+ * @param data The optional data to responed with
+ */
+function sendProcReply(originalPacket: ProcessPacket, data: any = {}) {
+
+    const returnPacket: ProcessPacket = {
+        ...originalPacket,
+        data,
+        isReply: true,
+        id: currentProcId,
+        originalProcId: currentProcId,
+    };
+
+    pm2.sendDataToProcessId(originalPacket.replyTo, returnPacket, err => true);
+}
+
+/**
+ * Init
+ */
+if (isClusterMode) {
+    const handleProcessMessage = (packet: ProcessPacket) => {
+        if (packet && packet.topic === 'metrics-get' && !packet.isReply) {
+            sendProcReply(packet, client.register.getMetricsAsJSON());
+        }
     }
+    process.removeListener('message', handleProcessMessage);
+    process.on('message', handleProcessMessage);
+}
+
+/**
+ * Returns the aggregate metric if running in cluster mode, otherwise, just the current
+ * instance's metrics
+ * @param timeoutInMilliseconds How long to wait for other processes to provide their metrics. 
+ */
+export async function getAggregateMetrics(timeoutInMilliseconds: number = 10e3): Promise<client.Registry> {
+
+    if (isClusterMode) {
+        const procMetrics = await awaitAllProcMessagesReplies('metrics-get', null, timeoutInMilliseconds);
+        return client.AggregatorRegistry.aggregate(procMetrics.map(o => o.data));
+    } else {
+        return client.register;
+    }
+
+}
+
+/**
+ * Creates a timer which executes when the current time is cleanly divisible by `syncTimeInMS`
+ * @param syncTimeInMilliseconds The time, in milliseconds
+ * @param fun The function to execute
+ * @returns The timer handle
+ */
+export function timeSyncRun(syncTimeInMilliseconds: number, fun: () => void): NodeJS.Timer {
+    const handle = setTimeout(fun, syncTimeInMilliseconds - Date.now() % syncTimeInMilliseconds);
+    handle.unref();
+    return handle;
 }

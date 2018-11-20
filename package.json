@@ -1,47 +1,36 @@
 {
-  "name": "electron-better-dialog",
-  "version": "1.0.6",
-  "description": "Wrapper for the Electron showMessageBox function which works with button objects instead of indexes",
+  "name": "pm2-cluster-prometheus",
+  "version": "1.0.0",
+  "description": "",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "scripts": {
     "build": "tsc",
-    "start": "tsc && electron ./dist/sample/index",
-    "lint": "tslint --project tslint.json -t stylish",
-    "test": "npm run lint && npm run build && nyc --reporter=html --reporter=text ava ./dist/test.js",
-    "coverage": "nyc report --reporter=text-lcov | coveralls"
+    "lint": "tslint --project tslint.json -t stylish"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/JakeH/electron-better-dialog.git"
+    "url": "git+https://github.com/JakeH/pm2-cluster-prometheus.git"
   },
   "author": "Jake Hickman",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/JakeH/electron-better-dialog/issues"
-  },
-  "nyc": {
-    "exclude": [
-      "**/test.js"
-    ]
+    "url": "https://github.com/JakeH/pm2-cluster-prometheus/issues"
   },
   "keywords": [
-    "electron",
-    "dialog",
-    "message",
-    "messagebox",
-    "button"
+    "pm2",
+    "cluster",
+    "prometheus",
+    "metrics"
   ],
-  "homepage": "https://github.com/JakeH/electron-better-dialog#readme",
+  "homepage": "https://github.com/JakeH/pm2-cluster-prometheus#readme",
+  "dependencies": {
+    "pm2": "^3.2.2",
+    "prom-client": "^11.2.0"
+  },
   "devDependencies": {
-    "@types/mock-require": "^2.0.0",
-    "ava": "^0.25.0",
-    "coveralls": "^3.0.2",
-    "electron": "^1.8.7",
-    "istanbul": "^0.4.5",
-    "mock-require": "^3.0.2",
-    "nyc": "^11.9.0",
+    "@types/node": "^10.12.9",
     "tslint": "^5.11.0",
-    "typescript": "^2.9.2"
+    "typescript": "^3.1.6"
   }
 }
