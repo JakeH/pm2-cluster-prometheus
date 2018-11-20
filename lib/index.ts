@@ -71,7 +71,7 @@ async function broadcastToAll(packet: ProcessPacket): Promise<number> {
  * @param data The optional data payload
  * @param timeoutInMilliseconds The length of time to wait for responses before rejecting the promise
  */
-function awaitAllProcMessagesReplies(topic: string, data: any = {}, timeoutInMilliseconds: number): Promise<Array<ProcessPacket>> {
+function awaitAllProcMessagesReplies(topic: string, timeoutInMilliseconds: number): Promise<Array<ProcessPacket>> {
 
     return new Promise(async (resolve, reject) => {
         const responses = [];
@@ -81,7 +81,7 @@ function awaitAllProcMessagesReplies(topic: string, data: any = {}, timeoutInMil
             replyTo: currentProcId,
             originalProcId: currentProcId,
             topic,
-            data,
+            data: {},
             isReply: false,
         });
 
@@ -147,7 +147,7 @@ if (isClusterMode) {
 export async function getAggregateMetrics(timeoutInMilliseconds: number = 10e3): Promise<client.Registry> {
 
     if (isClusterMode) {
-        const procMetrics = await awaitAllProcMessagesReplies('metrics-get', null, timeoutInMilliseconds);
+        const procMetrics = await awaitAllProcMessagesReplies('metrics-get', timeoutInMilliseconds);
         return client.AggregatorRegistry.aggregate(procMetrics.map(o => o.data));
     } else {
         return client.register;

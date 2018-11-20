@@ -1,6 +1,6 @@
 {
   "name": "pm2-cluster-prom",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -25,12 +25,12 @@
   ],
   "homepage": "https://github.com/JakeH/pm2-cluster-prometheus#readme",
   "dependencies": {
-    "pm2": "^3.2.2",
-    "prom-client": "^11.2.0"
+    "pm2": "^3.2.2"
   },
   "devDependencies": {
     "@types/node": "^10.12.9",
     "tslint": "^5.11.0",
-    "typescript": "^3.1.6"
+    "typescript": "^3.1.6",
+    "prom-client": "^11.2.0"
   }
 }
