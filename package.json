@@ -1,5 +1,5 @@
 {
-  "name": "pm2-cluster-prometheus",
+  "name": "pm2-cluster-prom",
   "version": "1.0.0",
   "description": "",
   "main": "./dist/index.js",

@@ -1,25 +1,25 @@
-# pm2-cluster-prometheus
+# pm2-cluster-prom
 
 Prometheus metrics aggregation for PM2's clustered mode.
 
 Returns an aggregation of the default prom-client registry from all PM2 processes when running in clustered mode, otherwise, returns the current proc's metrics. 
 
 ```bash
-$ npm install --save pm2-cluster-prometheus
+$ npm install --save pm2-cluster-prom
 ```
 
 ## Usage
 
 ### ES6
 ```typescript
-import { getAggregateMetrics } from 'pm2-cluster-prometheus';
+import { getAggregateMetrics } from 'pm2-cluster-prom';
 
 const metrics = await getAggregateMetrics();
 ```
 
 ### Vanilla
 ```javascript
-const clusterProm = require('pm2-cluster-prometheus');
+const clusterProm = require('pm2-cluster-prom');
 
 clusterProm.getAggregateMetrics().then(metrics => {
     console.log(metrics);
@@ -29,7 +29,7 @@ clusterProm.getAggregateMetrics().then(metrics => {
 As a general tip, if you're running in clustered mode, it would be a good idea to start your metrics collection at similar cycles to avoid jitter. 
 
 ```typescript
-import { timeSyncRun } from 'pm2-cluster-prometheus';
+import { timeSyncRun } from 'pm2-cluster-prom';
 
 const timeout = 15e3;
 timeSyncRun(timeout, () => client.collectDefaultMetrics({ timeout }));
