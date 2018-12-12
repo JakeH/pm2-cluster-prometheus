@@ -49,7 +49,9 @@ export const isClusterMode = process.env.exec_mode === 'cluster_mode';
 function getProcList(): Promise<Array<pm2.ProcessDescription>> {
     return new Promise((resolve, reject) => {
         pm2.list((err, list) => {
-            err ? reject(err) : resolve(list);
+            err ? reject(err)
+                // only return processes with the same name
+                : resolve(list.filter(o => o.name === process.env.name));
         });
     });
 }
