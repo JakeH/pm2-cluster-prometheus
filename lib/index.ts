@@ -51,7 +51,7 @@ function getProcList(): Promise<Array<pm2.ProcessDescription>> {
         pm2.list((err, list) => {
             err ? reject(err)
                 // only return processes with the same name
-                : resolve(list.filter(o => o.name === process.env.name));
+                : resolve(list.filter(o => o.name === process.env.name && o.pm2_env.status === 'online'));
         });
     });
 }
@@ -144,7 +144,7 @@ if (isClusterMode) {
 /**
  * Returns the aggregate metric if running in cluster mode, otherwise, just the current
  * instance's metrics
- * @param timeoutInMilliseconds How long to wait for other processes to provide their metrics. 
+ * @param timeoutInMilliseconds How long to wait for other processes to provide their metrics.
  */
 export async function getAggregateMetrics(timeoutInMilliseconds: number = 10e3): Promise<client.Registry> {
 

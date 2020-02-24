@@ -21,6 +21,7 @@
     "pm2",
     "cluster",
     "prometheus",
+    "prom",
     "metrics"
   ],
   "homepage": "https://github.com/JakeH/pm2-cluster-prometheus#readme",
