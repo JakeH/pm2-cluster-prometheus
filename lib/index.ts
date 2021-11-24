@@ -132,9 +132,9 @@ function sendProcReply(originalPacket: ProcessPacket, data: any = {}) {
  * Init
  */
 if (isClusterMode) {
-    const handleProcessMessage = (packet: ProcessPacket) => {
+    const handleProcessMessage = async (packet: ProcessPacket) => {
         if (packet && packet.topic === 'metrics-get' && !packet.isReply) {
-            sendProcReply(packet, client.register.getMetricsAsJSON());
+            sendProcReply(packet, await client.register.getMetricsAsJSON());
         }
     };
     process.removeListener('message', handleProcessMessage);
